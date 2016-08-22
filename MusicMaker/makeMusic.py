@@ -9,10 +9,10 @@ fig = pyplot.figure(0)
 fig.clear()
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
-vsini = 5.8
+vsini = 30.0
 R = 45000.0
 
-datadir = '/home/cdeen/Data/MoogPyGrid/CorrectedRawData/'
+datadir = '/Users/JNMcLane/data/CorrectedRawData/'
 
 files = glob.glob(datadir+'*_raw.fits')
 
@@ -22,7 +22,7 @@ for filename in files:
     syntheticMelody = Moog960.SyntheticMelody(filename=filename)
     syntheticMelody.selectPhrases(selectAll=True)
     convolved = syntheticMelody.rehearse(vsini=vsini, R=R, returnLabels=True)
-    syntheticMelody.record(labels=convolved, basename='TWHydra')
+    syntheticMelody.record(labels=convolved, basename='Model')
     del(convolved)
     del(syntheticMelody)
 
