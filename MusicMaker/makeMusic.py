@@ -10,7 +10,7 @@ fig.clear()
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
 vsini = 5.8
-R = 45000.0
+R = 2000.0
 
 datadir = '/home/cdeen/Data/MoogPyGrid/CorrectedRawData/'
 
@@ -19,10 +19,16 @@ files = glob.glob(datadir+'*_raw.fits')
 for filename in files:
     print filename
 
-    syntheticMelody = Moog960.SyntheticMelody(filename=filename)
+    Score = Moog960.Score()
+    syntheticMelody = Moog960.SyntheticMelody(filename=filename, Score=Score)
     syntheticMelody.selectPhrases(selectAll=True)
-    convolved = syntheticMelody.rehearse(vsini=vsini, R=R, returnLabels=True)
-    syntheticMelody.record(labels=convolved, basename='TWHydra')
-    del(convolved)
+    syntheticMelody.rehearse(vsini=vsini, R=R)
+    conv_Phrases = Score.convolved_labels[syntheticMelody.ID].keys()
+    for phrase in conv_Phrases:
+        conv_Labels = Score.convolved_labels[syntheticMelody.ID][phrase]
+        syntheticMelody.record(labels=conv_Labels, basename='TWHydra')
+    del(Score)
     del(syntheticMelody)
+    del(conv_Phrases)
+    del(conv_Labels)
 

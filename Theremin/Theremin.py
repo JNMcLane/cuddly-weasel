@@ -140,6 +140,9 @@ def computeIMs(orchestra):
     Gmax = numpy.max(params["LOGG"])
     Bmin = numpy.min(params["BFIELD"])
     Bmax = numpy.max(params["BFIELD"])
+    
+    IMs = []
+    CMs = []
 
     for T in params["TEFF"]:
         for G in params["LOGG"]:
@@ -206,6 +209,8 @@ def computeIMs(orchestra):
                 minusLabel.Spectrum.plot(ax=ax1)
                 ax1.figure.show()
                 raw_input()
+                
+                CMs.append(calculateCM(IM))
 
                 
 

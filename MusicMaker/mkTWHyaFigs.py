@@ -40,7 +40,7 @@ ax2 = fig.add_axes([0.1, 0.5, 0.8, 0.4])
 #wlStop = 22890.0
 #wlStart = 22100.0
 #wlStop = 22550.0
-#wlStart = 21700.0
+wlStart = 21700.0
 #wlStop = 21980.0
 #wlStart = 22010.0
 #wlStop = 22550.0
@@ -48,55 +48,70 @@ ax2 = fig.add_axes([0.1, 0.5, 0.8, 0.4])
 #wlStop = 21000.0
 #wlStart = 21000.0
 #wlStop = 22000.0
-wlStart = 22000.0
+#wlStart = 22000.0
 wlStop = 22800.0
 
-filename = '/home/deen/Investigations/TWHydra/TWHydra.fits'
-TWHya = Moog960.ObservedMelody.fromFile(filename=filename, label='IGRINS TWHydra')
+filename = '../Theremin/TWHydra.fits'
+#TWHya = Moog960.Score(observed=filename)
+#TWHya = Moog960.ObservedMelody.fromFile(filename=filename, label='IGRINS TWHydra')
 
-TWHya.selectPhrases(wlRange = [wlStart, wlStop])
-TWHya.loadData()
-observed_spectra, observed_label = TWHya.perform()
+#TWHya.selectPhrases(wlRange = [wlStart, wlStop])
+#TWHya.loadData()
 
-for obs in observed_spectra[0]:
-    obs.wl = obs.wl - 5.5
+orchestra = Moog960.Score(directory='./TWHydra', suffix='', observed=filename)
+#raw, interpolated, integrated, convolved, observed = orchestra.getMelodyParams()
+observedSpectra, observedLabel = orchestra.listen()
+observedSpectra.wl = observedSpectra.wl - 5.5
+region = (observedSpectra.wl > wlStart) & (observedSpectra.wl < wlStop)
+observedSpectra.wl = observedSpectra.wl[region]
+observedSpectra.flux_I = observedSpectra.flux_I[region]
 
-    region = (obs.wl > wlStart) & (obs.wl < wlStop)
-    obs.wl = obs.wl[region]
-    obs.flux_I = obs.flux_I[region]
 
-
-orchestra = Moog960.Score(directory='./blended', suffix='')
-raw, interpolated, integrated, convolved, observed = orchestra.getMelodyParams()
-
+mastered=orchestra.master()
 orchestra.selectMelodies(wlRange=[wlStart, wlStop])
-orchestra.selectEnsemble(selectedLabels=convolved)
+convolved = orchestra.getLabels(keySignature='CONVOLVED', selected=True)
+orchestra.selectEnsemble(selectedLabels=mastered)
 
-spectra, params, labels = orchestra.perform(selectedLabels = convolved)
+CMJParams = {"TEFF":4180, "LOGG":4.8, "BFIELD":2.3}
+WVParams = {"TEFF":3600, "LOGG":3.5, "BFIELD":0.0}
+SpectrumCMJ, LabelCMJ = orchestra.blend(desiredParameters=CMJParams)
+SpectrumWV, LabelWV = orchestra.blend(desiredParameters=WVParams)
 
-colors = ['g', 'm', 'c', 'r']
+
+#spectra, params = orchestra.perform(selectedLabels = [LabelCMJ, LabelWV])
+
+#colors = ['g', 'm', 'c', 'r']
+colors = ['g', 'r']
 
 bestFit= []
 veiled = []
+observedSpectra.plot(ax=ax1, color='k')
 #for T, G, B, color in zip(Ts, Gs, Bs, colors):
-for spectrum, label, color in zip(spectra, params, colors):
-    for phrase, l in zip(spectrum, label):
-        print phrase.wl[0], phrase.wl[-1]
-        if ((phrase.wl[0] < wlStart) & (phrase.wl[-1] > wlStop)): 
-            phrase.bin(obs.wl)
-            bestFit.append(fit(phrase.flux_I, obs.flux_I))
-            #bestFit[-1][0] = 0.3
-            print bestFit
-            phrase.flux_I = (phrase.flux_I+bestFit[-1][0])/(1.0+bestFit[-1][0])
-            ax1.plot(phrase.wl, phrase.flux_I, color = color, lw=2.0)
-            v = {}
-            v["spectrum"] = phrase
-            v["Teff"] = l.parameters["TEFF"]
-            v["log g"] = l.parameters["LOGG"]
-            v["B"] = l.parameters["BFIELD"]
-            v["color"] = color
-            v["veiling"] = bestFit[-1][0]
-            veiled.append(v)
+for label, color in zip([LabelCMJ[0], LabelWV[0]], colors):
+    spectrum = label.Spectrum
+    spectrum.bin(observedSpectra.wl)
+    bestFit.append(fit(spectrum.flux_I, observedSpectra.flux_I))
+    print bestFit
+    xpts = numpy.arange(len(spectrum.flux_I))
+    spectrum.flux_I = (spectrum.flux_I+bestFit[-1][0])/(1.0+bestFit[-1][0])*bestFit[-1][2] + xpts*bestFit[-1][1]
+    #ax1.clear()
+    spectrum.plot(ax=ax1, color = color, lw=2.0)
+    #observedSpectra.plot(ax=ax1, color = 'k')
+    diffSpectra = observedSpectra - spectrum
+    diffSpectra.plot(ax=ax2, color = color, lw=0.5)
+    v = {}
+    v["spectrum"] = spectrum
+    v["Teff"] = label.parameters["TEFF"]
+    v["log g"] = label.parameters["LOGG"]
+    v["B"] = label.parameters["BFIELD"]
+    v["color"] = color
+    v["veiling"] = bestFit[-1][0]
+    veiled.append(v)
+    #fig.show()
+    #raw_input()
+
+fig.show()
+raw_input()
 
 
 bestFit = numpy.average(numpy.array(bestFit), axis=0)
