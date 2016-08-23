@@ -49,7 +49,7 @@ wlStart = 21700.0
 #wlStart = 21000.0
 #wlStop = 22000.0
 #wlStart = 22000.0
-wlStop = 22800.0
+wlStop = 23800.0
 
 filename = '../Theremin/TWHydra.fits'
 #TWHya = Moog960.Score(observed=filename)
@@ -72,6 +72,7 @@ orchestra.selectMelodies(wlRange=[wlStart, wlStop])
 convolved = orchestra.getLabels(keySignature='CONVOLVED', selected=True)
 orchestra.selectEnsemble(selectedLabels=mastered)
 
+DSMParams = {"TEFF":4180, "LOGG":4.3, "BFIELD":2.3}
 CMJParams = {"TEFF":4180, "LOGG":4.8, "BFIELD":2.3}
 WVParams = {"TEFF":3600, "LOGG":3.5, "BFIELD":0.0}
 SpectrumCMJ, LabelCMJ = orchestra.blend(desiredParameters=CMJParams)
