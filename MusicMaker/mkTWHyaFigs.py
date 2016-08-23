@@ -5,13 +5,27 @@ import scipy
 import scipy.optimize
 import numpy
 
+def calc_VeilingSED(Thot, Tint, Tcool, fi_fh, fc_fh):
+    wave = numpy.arange(1.0, 2.5, 0.01)
+    bm = numpy.argsort(abs(wave-2.2))[0]
+    Bhot = SpectralTools.blackBody(wl = wave/10000.0, T=Thot,
+               outUnits='Energy')
+    Bint = SpectralTools.blackBody(wl = wave/10000.0, T=Tint,
+               outUnits='Energy')*fi_fh
+    Bcool = SpectralTools.blackBody(wl = wave/10000.0, T=Tcool,
+               outUnits='Energy')*fc_fh
+    composite = Bhot+Bint+Bcool
+    composite /= composite[bm]
+    return scipy.interpolate.interp1d(wave*10000.0, composite)
+
+
 def fit(synthetic, observed):
     veiling = 0.1
     slope = 0.0001
     continuum = 1.0
+    veilingSED = calc_VeilingSED(10000, 5000, 1500, 0.1, 0.7)
 
     params = [veiling, slope, continuum]
-
 
     def fitfunc(pars, synth):
         xpts = numpy.arange(len(synth))
@@ -48,74 +62,71 @@ ax2 = fig.add_axes([0.1, 0.5, 0.8, 0.4])
 #wlStop = 21000.0
 #wlStart = 21000.0
 #wlStop = 22000.0
-wlStart = 22000.0
-wlStop = 22800.0
+wlStart = 22800.0
+wlStop = 23800.0
 
-filename = '/home/deen/Investigations/TWHydra/TWHydra.fits'
-TWHya = Moog960.ObservedMelody.fromFile(filename=filename, label='IGRINS TWHydra')
+filename = '../Transpose/TWHydra_20150128_composite.fits'
 
-TWHya.selectPhrases(wlRange = [wlStart, wlStop])
-TWHya.loadData()
-observed_spectra, observed_label = TWHya.perform()
+orchestra = Moog960.Score(directory='./TWHydra', suffix='', observed=filename)
+observedSpectra, observedLabel = orchestra.listen()
+observedSpectra.wl *= 10.0
+observedSpectra.wl = observedSpectra.wl - 5.5
+median = numpy.median(observedSpectra.flux_I)
+observedSpectra.flux_I /= median
+observedSpectra.dflux_I /= median
+region = (observedSpectra.wl > wlStart) & (observedSpectra.wl < wlStop)
+observedSpectra.wl = observedSpectra.wl[region]
+observedSpectra.flux_I = observedSpectra.flux_I[region]
+observedSpectra.dflux_I = observedSpectra.dflux_I[region]
 
-for obs in observed_spectra[0]:
-    obs.wl = obs.wl - 5.5
 
-    region = (obs.wl > wlStart) & (obs.wl < wlStop)
-    obs.wl = obs.wl[region]
-    obs.flux_I = obs.flux_I[region]
-
-
-orchestra = Moog960.Score(directory='./blended', suffix='')
-raw, interpolated, integrated, convolved, observed = orchestra.getMelodyParams()
-
+mastered=orchestra.master()
 orchestra.selectMelodies(wlRange=[wlStart, wlStop])
-orchestra.selectEnsemble(selectedLabels=convolved)
+convolved = orchestra.getLabels(keySignature='CONVOLVED', selected=True)
+orchestra.selectEnsemble(selectedLabels=mastered)
 
-spectra, params, labels = orchestra.perform(selectedLabels = convolved)
+DSMParams = {"TEFF":4180, "LOGG":4.0, "BFIELD":2.3}
+CMJParams = {"TEFF":4180, "LOGG":4.8, "BFIELD":2.3}
+WVParams = {"TEFF":3600, "LOGG":3.5, "BFIELD":0.0}
+SpectrumCMJ, LabelCMJ = orchestra.blend(desiredParameters=CMJParams)
+SpectrumWV, LabelWV = orchestra.blend(desiredParameters=WVParams)
+SpectrumDSM, LabelDSM = orchestra.blend(desiredParameters=DSMParams)
 
-colors = ['g', 'm', 'c', 'r']
+
+# Save fits files for further processing  - Very messy!  I know!!!
+LabelCMJ[0].Phrase.saveConvolved(label=LabelCMJ[0], filename='./Output/CMJ.fits', header=LabelCMJ[0].Melody.header)
+LabelDSM[0].Phrase.saveConvolved(label=LabelDSM[0], filename='./Output/DSM.fits', header=LabelDSM[0].Melody.header)
+LabelWV[0].Phrase.saveConvolved(label=LabelWV[0], filename='./Output/WV.fits', header=LabelWV[0].Melody.header)
+
+#spectra, params = orchestra.perform(selectedLabels = [LabelCMJ, LabelWV])
+
+#colors = ['g', 'm', 'c', 'r']
+colors = ['g', 'b', 'r']
 
 bestFit= []
 veiled = []
-#for T, G, B, color in zip(Ts, Gs, Bs, colors):
-for spectrum, label, color in zip(spectra, params, colors):
-    for phrase, l in zip(spectrum, label):
-        print phrase.wl[0], phrase.wl[-1]
-        if ((phrase.wl[0] < wlStart) & (phrase.wl[-1] > wlStop)): 
-            phrase.bin(obs.wl)
-            bestFit.append(fit(phrase.flux_I, obs.flux_I))
-            #bestFit[-1][0] = 0.3
-            print bestFit
-            phrase.flux_I = (phrase.flux_I+bestFit[-1][0])/(1.0+bestFit[-1][0])
-            ax1.plot(phrase.wl, phrase.flux_I, color = color, lw=2.0)
-            v = {}
-            v["spectrum"] = phrase
-            v["Teff"] = l.parameters["TEFF"]
-            v["log g"] = l.parameters["LOGG"]
-            v["B"] = l.parameters["BFIELD"]
-            v["color"] = color
-            v["veiling"] = bestFit[-1][0]
-            veiled.append(v)
+observedSpectra.plot(ax=ax1, color='k')
+for label, color in zip([LabelCMJ[0], LabelWV[0], LabelDSM[0]], colors):
+    spectrum = label.Spectrum
+    spectrum.bin(observedSpectra.wl)
+    bestFit.append(fit(spectrum.flux_I, observedSpectra.flux_I))
+    print bestFit
+    xpts = numpy.arange(len(spectrum.flux_I))
+    spectrum.flux_I = (spectrum.flux_I+bestFit[-1][0])/(1.0+bestFit[-1][0])*bestFit[-1][2] + xpts*bestFit[-1][1]
+    #ax1.clear()
+    spectrum.plot(ax=ax1, color = color, lw=2.0)
+    #observedSpectra.plot(ax=ax1, color = 'k')
+    diffSpectra = observedSpectra - spectrum
+    diffSpectra.plot(ax=ax2, color = color, lw=0.5)
+    v = {}
+    v["spectrum"] = spectrum
+    v["Teff"] = label.parameters["TEFF"]
+    v["log g"] = label.parameters["LOGG"]
+    v["B"] = label.parameters["BFIELD"]
+    v["color"] = color
+    v["veiling"] = bestFit[-1][0]
+    veiled.append(v)
+    #fig.show()
+    #raw_input()
 
-
-bestFit = numpy.average(numpy.array(bestFit), axis=0)
-#bestContinuum = 
-#bestFit[2] + bestFit[1]*xpts
-observed_spectra[0][0].flux_I = observed_spectra[0][0].flux_I/bestFit[2] - bestFit[1]*numpy.arange(len(observed_spectra[0][0].wl))
-ax1.plot(observed_spectra[0][0].wl, observed_spectra[0][0].flux_I, color = 'k', lw=2.0)
-
-ax1.set_xbound(wlStart, wlStop)
-ax1.set_ybound(0.5, 1.1)
-
-for v in veiled:
-    sp = v["spectrum"]
-    difference = sp - observed_spectra[0][0]
-    ax2.plot(difference.wl, difference.flux_I, color = v["color"], lw = 2.0)
-    print v["Teff"], v["B"], v["veiling"]
 fig.show()
-
-#del(orchestra)
-#del(spectra)
-#del(params)
-#del(labels)

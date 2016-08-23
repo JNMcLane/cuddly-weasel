@@ -14,15 +14,22 @@ R = 45000.0
 
 datadir = '/Users/JNMcLane/data/CorrectedRawData/'
 
+
 files = glob.glob(datadir+'*_raw.fits')
 
 for filename in files:
     print filename
 
-    syntheticMelody = Moog960.SyntheticMelody(filename=filename)
+    Score = Moog960.Score()
+    syntheticMelody = Moog960.SyntheticMelody(filename=filename, Score=Score)
     syntheticMelody.selectPhrases(selectAll=True)
-    convolved = syntheticMelody.rehearse(vsini=vsini, R=R, returnLabels=True)
-    syntheticMelody.record(labels=convolved, basename='Model')
-    del(convolved)
+    syntheticMelody.rehearse(vsini=vsini, R=R)
+    conv_Phrases = Score.convolved_labels[syntheticMelody.ID].keys()
+    for phrase in conv_Phrases:
+        conv_Labels = Score.convolved_labels[syntheticMelody.ID][phrase]
+        syntheticMelody.record(labels=conv_Labels, basename='TWHydra')
+    del(Score)
     del(syntheticMelody)
+    del(conv_Phrases)
+    del(conv_Labels)
 
