@@ -8,10 +8,15 @@ v = velocity shift (RV + BVC) in km/s, allow to varry between -60.0 and 60.0
 maybe vieling and continuum?
 
 '''
+import Moog960
 import numpy as np
 import emcee
 import corner
 import time
+import matplotlib.pyplot as pyplot
+
+fig = pyplot.figure(0)
+ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
 def lnprior(theta): #Priors for Bayesian Model, assuming flat priors
 	B, T, logg, v = theta
@@ -19,17 +24,25 @@ def lnprior(theta): #Priors for Bayesian Model, assuming flat priors
 		return 0.0
 	return -np.inf
 
-def lnlike(theta, obs): #Log-likelyhood for the posterior, using chi-squared
+def lnlike(theta): #Log-likelyhood for the posterior, using chi-squared
 	B, T, logg, v = theta
-	synth = #casey's code to call the synth model
-	return -0.5(np.sum( ((obs-synth)/obs) ** 2.))
+        retval = Score.calc_lnlike(Bfield=B, Teff=T, logg=logg, rv=v, ax=None)
+	#synth = #casey's code to call the synth model
+	#return -0.5(np.sum( ((obs-synth)/obs) ** 2.))
+	return retval
 
-def lnprob(theta, obs): #The probability of accepting the new point. 
+def lnprob(theta): #The probability of accepting the new point. 
 	lp = lnprior(theta)
 	if not np.isfinite(lp):
 		return -np.inf
-	return lp + lnlike(theta, obs)
+	return lp + lnlike(theta)
 
+
+Score = Moog960.Score(directory='../MusicMaker/TWHydra', suffix='', observed='../Theremin/TWHydra.fits')
+mastered = Score.master()
+
+#combine observed phrases into a master phrase
+compositeObservedSpectrum, compositeObservedLabel = Score.listen()
 
 #MCMC parameters
 nwalkers = 50 	#number of walkers used in fitting
@@ -43,7 +56,7 @@ psize = pos_max - pos_min
 pos = [pos_min + psize*np.random.rand(ndim) for i in range(nwalkers)]
 
 #Setup ensamble sampler from emcee
-sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(obs))
+sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=())
 
 #Preform and time burn-in phase
 time0 = time.time()
