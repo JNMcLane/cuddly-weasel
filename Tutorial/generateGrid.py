@@ -20,7 +20,7 @@ necessary parameters.  It is named generateGrid.cfg
 
 3) Run the program
 
-> run generateGrid generateGrid.cfg ALPHA
+> run generateGrid.py generateGrid.cfg ALPHA
 
 """
 
