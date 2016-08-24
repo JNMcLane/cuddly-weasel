@@ -4,12 +4,13 @@ import sys
 import numpy
 
 """
-This program should be run third in the tutorial sequence.  Once the grid has been
+1) This program should be run third in the tutorial sequence.  Once the grid has been
 convovled with the previous program, this program reads in the grid of convolved
 models and interpolates to give a synthetic spectrum corresponding to the desired
 parameters (Teff, log g, and Bfield).  The blended spectrum is then saved in a
 .fits file for further processing
 
+2) run blendModels.py blendModels.cfg
 
 """
 
