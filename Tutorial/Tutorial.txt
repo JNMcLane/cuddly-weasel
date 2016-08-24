@@ -1,0 +1,13 @@
+This is a Tutorial about how to use MoogStokes and the associated Moog960 data structures
+
+Each python program has usage instructions in the comments.
+
+The order of execution is:
+
+1) generateGrid.py
+
+2) convolveGrid.py
+
+3) blendModels.py
+
+4) readBlended.py
