@@ -4,10 +4,23 @@ Each python program has usage instructions in the comments.
 
 The order of execution is:
 
-1) generateGrid.py
+1) generateGrid.py - This generates a grid of raw synthetic spectra and saves
+      the raw data files to disk. The configuration parameters can be found in
+      generateGrid.cfg
 
-2) convolveGrid.py
+2) convolveGrid.py - This reads in the raw data files and processes them, using a
+      vsini and instrumental resolving power, to facilitate comparisons with observed
+      spectra.  The convolved grid is then saved to disk.
 
-3) blendModels.py
+3) blendModels.py - This program reads in the grid of convolved spectra, and 
+      interpolates between grid points to return a spectrum of arbitrary parameters,
+      given that the parameters fall within the coordinates of the grid (extrapolation
+      is not allowed)
 
 4) readBlended.py
+
+
+
+Troubleshooting
+-------------------------------
+

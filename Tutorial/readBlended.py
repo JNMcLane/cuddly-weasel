@@ -9,6 +9,11 @@ import numpy
 This program should be run fourth in the tutorial sequence.  This program allows the
 user to read in a previously stored model to play around with it.
 
+1) edit the configuration file readBlended.py to select which blended files you want
+     to work with.
+
+2) run readBlended.py readBlended.cfg
+
 """
 
 #Loads in configuration

@@ -10,6 +10,10 @@ models and interpolates to give a synthetic spectrum corresponding to the desire
 parameters (Teff, log g, and Bfield).  The blended spectrum is then saved in a
 .fits file for further processing
 
+1) Edit the configuration parameters in blendModels.cfg to reflect your desired
+blends
+
+2) run blendModels.py blendModels.cfg
 
 """
 
