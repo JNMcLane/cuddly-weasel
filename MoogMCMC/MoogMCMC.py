@@ -38,7 +38,7 @@ def lnprob(theta): #The probability of accepting the new point.
 	return lp + lnlike(theta)
 
 
-Score = Moog960.Score(directory='../MusicMaker/TWHydra', suffix='', observed='../Theremin/TWHydra.fits')
+Score = Moog960.Score(directory='../MusicMaker/TWHydra', suffix='', observed='../Tutorial/Blended/testStar_CD.fits')
 mastered = Score.master()
 
 #combine observed phrases into a master phrase
