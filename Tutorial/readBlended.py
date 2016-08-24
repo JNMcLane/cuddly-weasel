@@ -9,6 +9,8 @@ import numpy
 This program should be run fourth in the tutorial sequence.  This program allows the
 user to read in a previously stored model to play around with it.
 
+2) run realBlended.py realBlended.cfg
+
 """
 
 #Loads in configuration
