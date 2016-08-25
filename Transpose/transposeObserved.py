@@ -21,22 +21,28 @@ varfiles = ['/home/cdeen/Data/20150128/SDCH_20150128_0125.variance.fits', '/home
 
 phrases = []
 for datafile, wlsolfile, snfile, varfile in zip(datafiles, wlsolfiles, snfiles, varfiles):
-    Score = Moog960.Score()
-    Melody = Moog960.ObservedMelody(Score=Score)
     wlsol = pyfits.getdata(wlsolfile)
     data = pyfits.getdata(datafile)
+    dataheader = pyfits.getheader(datafile)
     snr = pyfits.getdata(snfile)
     var = pyfits.getdata(varfile)
     observedData = []
     observedLabels = []
+    headerKWs = {}
+    Name = dataheader.get('OBJECT')
+    headerKWs["OBJECT"] = Name
+    headerKWs["DATE-OBS"] = dataheader.get('DATE-OBS')
+    headerKWs["INSTRUMENT"] = dataheader.get('INSTRUME')
+    headerKWs["OBSERVER"] = dataheader.get('OBSERVER')
+    headerKWs["EXPTIME"] = dataheader.get('EXPTIME')
+    Score = Moog960.Score()
+    Melody = Moog960.ObservedMelody(Score=Score, name=Name)
     for wl, I, sn, v in zip(wlsol, data, snr, var):
 
         header = pyfits.Header()
+        header.set('NAME', Name)
         header.set("WLSTART", numpy.min(wl))
         header.set("WLSTOP", numpy.max(wl))
-
-        #noise = SpectralTools.Spectrum(wl=wl, I=sn, header=header, spectrum_type="SNR")
-        
 
         Melody.addPhrase(Moog960.ObservedPhrase(observedData=[SpectralTools.Spectrum(wl=wl, 
                          I=I, dI=I/sn, header=header, spectrum_type="OBSERVED")], Melody=Melody))
@@ -57,12 +63,14 @@ for datafile, wlsolfile, snfile, varfile in zip(datafiles, wlsolfiles, snfiles, 
                   reference=Melody.phrases[-1].observedData[-1], Phrase=Melody.phrases[-1],
                   Spectrum=Melody.phrases[-1].observedData[-1], Score=Score, Melody=Melody))
         
-    Score.record(keySignature='OBSERVED', filename = 'TWHydra_20150128.fits', dI=True)
+    Score.record(keySignature='OBSERVED', filename = 'TWHydra_20150128.fits', dI=True, 
+                 primaryHeaderKWs=headerKWs)
     composite, label = Score.listen()
-    label.Phrase.record(filename = 'TWHydra_20150128_composite.fits', dI=True)
-    composite.plot(ax=ax1)
-    fig1.show()
-    raw_input()
+    label.Phrase.record(filename = 'TWHydra_20150128_composite.fits', dI=True, 
+                        primaryHeaderKWs=headerKWs)
+    #composite.plot(ax=ax1)
+    #fig1.show()
+    #raw_input()
 
 
 
