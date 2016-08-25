@@ -45,7 +45,7 @@ mastered = Score.master()
 compositeObservedSpectrum, compositeObservedLabel = Score.listen()
 
 #MCMC parameters
-nwalkers = 50 	#number of walkers used in fitting
+nwalkers = 20 	#number of walkers used in fitting
 ndim = 4 		#number of parameters being fit
 
 
@@ -60,16 +60,19 @@ sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=())
 
 #Preform and time burn-in phase
 time0 = time.time()
-pos, prob, state  = sampler.run_mcmc(pos, 100)
+pos, prob, state  = sampler.run_mcmc(pos, 20)
 sampler.reset()
 time1=time.time()
 print 'Burn-in time was '+str(time1-time0)+' seconds.'
 
 #Perform MCMC fit
 time0 = time.time()
-pos, prob, state  = sampler.run_mcmc(pos, 700)
+pos, prob, state  = sampler.run_mcmc(pos, 100)
 time1=time.time()
 print 'Fitting time was '+str(time1-time0)+' seconds.'
 
+
 samples = sampler.flatchain
-samples.shape
+figure = corner.corner(samples)
+figure.show()
+figure.savefig("test.png")
