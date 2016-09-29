@@ -31,6 +31,7 @@ fig.clear()
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
 for label in labels:
+    print label.parameters["TEFF"]
     label.Spectrum.plot(ax=ax)
 
 ax.legend(loc=3)

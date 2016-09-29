@@ -59,11 +59,11 @@ for T in desiredTeff:
             desiredParams["TEFF"] = T
             desiredParams["LOGG"] = G
             desiredParams["BFIELD"] = B
-            blendedMelody, blendedLabels = Score.blend(desiredParameters=desiredParams)
+            blendedLabel = Score.blend(desiredParameters=desiredParams)
 
             filename = blendedOutput+blendedBase+'_T%d_G%.2f_B%.2f.fits' % (T, G, B)
             # Save fits files for further processing  - Very messy!  I know!!!
             #blendedLabels[0].Spectrum.bin(Score.compositeObservedLabel.Spectrum.wl)
-            blendedLabels[0].Phrase.saveConvolved(label=blendedLabels[0], 
-                      filename=filename, header=blendedLabels[0].Melody.header)
+            blendedLabel.Phrase.saveConvolved(label=blendedLabel, 
+                      filename=filename, header=blendedLabel.Melody.header)
 

@@ -1,5 +1,5 @@
 import Moog960
-import pyfits
+import astropy.io.fits as pyfits
 
 
 #This program reads in an IGRINS spectrum from the .fits files produced by the

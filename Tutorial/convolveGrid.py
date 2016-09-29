@@ -50,6 +50,7 @@ for filename in gridFiles:
     syntheticMelody = Moog960.SyntheticMelody(filename=filename, Score=Score)
     syntheticMelody.selectPhrases(selectAll=True)
     syntheticMelody.rehearse(vsini=vsini, R=R)
+    print("%d" % len(syntheticMelody.phrases[0].convolvedData[0].wl))
     convolved_Labels = Score.getLabels(keySignature="CONVOLVED")
     for label in convolved_Labels:
         label.Melody.record(labels=[label], outdir=outputdir, basename=outputbase)
