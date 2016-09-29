@@ -65,7 +65,7 @@ for datafile, wlsolfile, snfile, varfile in zip(datafiles, wlsolfiles, snfiles, 
         
     Score.record(keySignature='OBSERVED', filename = 'TWHydra_20150128.fits', dI=True, 
                  primaryHeaderKWs=headerKWs)
-    composite, label = Score.listen()
+    label = Score.listen()
     label.Phrase.record(filename = 'TWHydra_20150128_composite.fits', dI=True, 
                         primaryHeaderKWs=headerKWs)
     #composite.plot(ax=ax1)
