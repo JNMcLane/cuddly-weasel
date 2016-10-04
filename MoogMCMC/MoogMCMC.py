@@ -19,33 +19,33 @@ fig = pyplot.figure(0)
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
 def lnprior(theta): #Priors for Bayesian Model, assuming flat priors
-	B, T, logg, v = theta
-	if 0.0 < B < 4.0 and 3000.0 < T < 5000.0 and 3.0 < logg < 5.0 and -60.0 < v <60.0:
-		return 0.0
-	return -np.inf
+    B, T, logg, v = theta
+    if 0.0 < B < 4.0 and 3000.0 < T < 5000.0 and 3.0 < logg < 5.0 and -60.0 < v <60.0:
+        return 0.0
+    return -np.inf
 
 def lnlike(theta): #Log-likelyhood for the posterior, using chi-squared
-	B, T, logg, v = theta
-        retval = Score.calc_lnlike(Bfield=B, Teff=T, logg=logg, rv=v, ax=None)
-	#synth = #casey's code to call the synth model
-	#return -0.5(np.sum( ((obs-synth)/obs) ** 2.))
-	return retval
+    B, T, logg, v = theta
+    retval = Score.calc_lnlike(Bfield=B, Teff=T, logg=logg, rv=v, ax=None)
+    #synth = #casey's code to call the synth model
+    #return -0.5(np.sum( ((obs-synth)/obs) ** 2.))
+    return retval
 
 def lnprob(theta): #The probability of accepting the new point. 
-	lp = lnprior(theta)
-	if not np.isfinite(lp):
-		return -np.inf
-	return lp + lnlike(theta)
+    lp = lnprior(theta)
+    if not np.isfinite(lp):
+        return -np.inf
+    return lp + lnlike(theta)
 
 
-Score = Moog960.Score(directory='../MusicMaker/TWHydra', suffix='', observed='../Tutorial/Blended/testStar_CD.fits')
+Score = Moog960.Score(directory='../MusicMaker/Convolved/', suffix='', observed='../MusicMaker/Blended/blended_T3550_G3.75_B0.50.fits')
 mastered = Score.master()
 
 #combine observed phrases into a master phrase
-compositeObservedSpectrum, compositeObservedLabel = Score.listen()
+compositeObservedLabel = Score.listen()
 
 #MCMC parameters
-nwalkers = 20 	#number of walkers used in fitting
+nwalkers = 100 	#number of walkers used in fitting
 ndim = 4 		#number of parameters being fit
 
 
@@ -60,14 +60,14 @@ sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=())
 
 #Preform and time burn-in phase
 time0 = time.time()
-pos, prob, state  = sampler.run_mcmc(pos, 20)
+pos, prob, state  = sampler.run_mcmc(pos, 100)
 sampler.reset()
 time1=time.time()
 print 'Burn-in time was '+str(time1-time0)+' seconds.'
 
 #Perform MCMC fit
 time0 = time.time()
-pos, prob, state  = sampler.run_mcmc(pos, 100)
+pos, prob, state  = sampler.run_mcmc(pos, 1000)
 time1=time.time()
 print 'Fitting time was '+str(time1-time0)+' seconds.'
 
