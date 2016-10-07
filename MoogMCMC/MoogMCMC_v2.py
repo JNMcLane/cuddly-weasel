@@ -5,7 +5,7 @@ T = T_eff in K, allow to vary between 3000.0 and 5000.0
 logg = logg in dex, allow to vary between 3.0 and 5.0
 v = velocity shift (RV + BVC) in km/s, allow to varry between -60.0 and 60.0
 
-maybe vieling and continuum?
+maybe veiling and continuum?
 
 '''
 import Moog960
@@ -38,7 +38,8 @@ def lnprob(theta): #The probability of accepting the new point.
     return lp + lnlike(theta)
 
 
-Score = Moog960.Score(directory='/data/cdeen/Data/MoogPy/Convolved/', suffix='')
+Score = Moog960.Score(directory='/home/cdeen/Code/Python/cuddly-weasel/MusicMaker/Convolved/', suffix='')
+#Score = Moog960.Score(directory='/data/cdeen/Data/MoogPy/Convolved/', suffix='')
 mastered = Score.master()
 
 T_low = 3000.0

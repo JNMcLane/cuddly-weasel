@@ -27,18 +27,24 @@ def parseParams(labels):
 
 
 class ControlMatrix( object ):
-    def __init__(self, IM, factor, observed, Gain, ax=None):
-        self.IM = IM
-        self.factor = factor
+    def __init__(self, IMs = [], factors=[], coordinates = {}, Gain=0.5, observed = None, ax=None):
+        self.IM_Spectra = IMs
         self.observed = observed
+        self.IMs = []
+        self.factors = factors
         self.ax = ax
         self.calcCM()
         self.Gain = Gain
+        self.coordinates = coordinates
 
     def calcCM(self):
-        lineIMs = self.IM[:-4:,]
-        dims = lineIMs.shape
-        U,S,V = scipy.linalg.svd(lineIMs)
+        for spec in self.IM_Spectra:
+            self.IMs.append(spec.flux_I)
+        self.IMs = numpy.array(self.IMs)
+        """
+        #lineIMs = self.IM[:-4:,]
+        dims = self.IMs.shape
+        U,S,V = scipy.linalg.svd(self.IMs)
         if self.ax != None:
             self.ax.clear()
             self.ax.plot(numpy.log10(S))
@@ -61,8 +67,12 @@ class ControlMatrix( object ):
             newS[i][i] = D[i]
 
         S = newS.copy()
-        lineCM = numpy.array(scipy.matrix(V.T.dot(S.T.dot(U.T)),dtype=numpy.float32)).T
+        self.CM = numpy.array(scipy.matrix(V.T.dot(S.T.dot(U.T)),dtype=numpy.float32)).T
+        """
 
+        self.CM = scipy.linalg.pinv(self.IMs).T
+
+        """
         globalIMs = self.IM[-4:,]
         dims = globalIMs.shape
         U,S,V = scipy.linalg.svd(globalIMs)
@@ -81,6 +91,8 @@ class ControlMatrix( object ):
             self.CM[i] = lineCM[i]
         for j in range(globalCM.shape[0]):
             self.CM[i+j+1] = globalCM[j]
+
+        """
         
 
     def dot(self, difference):
@@ -96,14 +108,7 @@ class ControlMatrix( object ):
 
     def getCommand(self, synthesized, ax=None):
         difference = self.observed - synthesized
-        #tot = []
-        #for i in range(len(difference.wl)):
-        #    diff = difference.flux_I[i]
-        #    cm = self.CM[3][i]
-        #    tot.append(diff*cm)
-        #    print i, diff, cm, diff*cm, tot
 
-        #diff = self.dot(difference)
         if ax!=None:
             ax.clear()
             difference.plot(ax=ax)
@@ -111,15 +116,15 @@ class ControlMatrix( object ):
             ax.plot(self.observed.wl, self.IM[-2])
             ax.figure.show()
             raw_input()
-        command =  self.Gain*(self.dot(difference))/self.factor
-        command[factor < 1e-3] = 0.0
+        command =  self.Gain*(self.dot(difference))*self.factors
+        #command[self.factors < 1e-3] = 0.0
         return command
 
 def computeIMs(orchestra):
-    #raw, interpolated, integrated, convolved, observed = orchestra.getMelodyParams()
     convolved = orchestra.convolved_labels
 
     mastered = orchestra.master(selectedLabels=convolved, keySignature='CONVOLVED')
+    observed = orchestra.listen()
 
     params = parseParams(mastered)
 
@@ -128,8 +133,6 @@ def computeIMs(orchestra):
 
     for blah in mastered:
         blah.parameters["SELECTED"] = True
-
-    #orchestra.selectExcerpt(wlRange =[wlStart, wlStop], exact=True)
 
     TeffStroke = 50.0
     loggStroke = 0.5
@@ -147,70 +150,58 @@ def computeIMs(orchestra):
     for T in params["TEFF"]:
         for G in params["LOGG"]:
             for B in params["BFIELD"]:
-                IM = []
-                factor = []
+                IMs = []
+                factors = []
                 plusT = numpy.min([T+TeffStroke, Tmax])
-                plusMelody, plusLabels = orchestra.blend(desiredParameters = {"TEFF":plusT, 
-                    "LOGG":G, "BFIELD":B})
-                plus, plusLabel = plusMelody.perform(label=plusLabels[0])
+                orig = orchestra.blend(desiredParameters = {"TEFF":T, "LOGG":G,
+                         "BFIELD":B}, appendTheBlend=False)
+                orig.Spectrum.bin(newWl=observed.Spectrum.wl)
+                plus = orchestra.blend(desiredParameters = {"TEFF":plusT, 
+                    "LOGG":G, "BFIELD":B}, appendTheBlend=False)
 
                 minusT = numpy.max([T-TeffStroke, Tmin])
-                minusMelody, minusLabels = orchestra.blend(desiredParameters = {"TEFF":minusT, 
-                    "LOGG":G, "BFIELD":B})
-                minus, minusLabel = minusMelody.perform(label=minusLabels[0])
+                minus = orchestra.blend(desiredParameters = {"TEFF":minusT, 
+                    "LOGG":G, "BFIELD":B}, appendTheBlend=False)
 
-                IM.append(plus-minus)
-                factor.append(plusLabel.parameters["TEFF"] - minusLabel.parameters["TEFF"])
+                IMs.append(plus.Spectrum - minus.Spectrum)
+                IMs[-1].bin(newWl=observed.Spectrum.wl)
+                factors.append(plus.parameters["TEFF"] - minus.parameters["TEFF"])
 
            
                 print plusT, minusT
-                ax1.clear()
-                plusLabel.Spectrum.plot(ax=ax1)
-                minusLabel.Spectrum.plot(ax=ax1)
-                ax1.figure.show()
-                raw_input()
 
                 plusG = numpy.min([G+loggStroke, Gmax])
-                plusMelody, plusLabels = orchestra.blend(desiredParameters = {"TEFF":T, 
-                    "LOGG":plusG, "BFIELD":B})
-                plus, plusLabel = plusMelody.perform(label=plusLabels[0])
+                plus = orchestra.blend(desiredParameters = {"TEFF":T, 
+                    "LOGG":plusG, "BFIELD":B}, appendTheBlend=False)
 
                 minusG = numpy.max([G-loggStroke, Gmin])
-                minusMelody, minusLabels = orchestra.blend(desiredParameters = {"TEFF":T, 
+                minus = orchestra.blend(desiredParameters = {"TEFF":T, 
                     "LOGG":minusG, "BFIELD":B})
-                minus, minusLabel = minusMelody.perform(label=minusLabels[0])
 
-                IM.append(plus-minus)
-                factor.append(plusLabel.parameters["LOGG"] - minusLabel.parameters["LOGG"])
+                IMs.append(plus.Spectrum-minus.Spectrum)
+                IMs[-1].bin(newWl=observed.Spectrum.wl)
+                factors.append(plus.parameters["LOGG"] - minus.parameters["LOGG"])
 
                 print plusG, minusG
-                ax1.clear()
-                plusLabel.Spectrum.plot(ax=ax1)
-                minusLabel.Spectrum.plot(ax=ax1)
-                ax1.figure.show()
-                raw_input()
 
                 plusB = numpy.min([B+BfieldStroke, Bmax])
-                plusMelody, plusLabels = orchestra.blend(desiredParameters = {"TEFF":T, 
-                    "LOGG":G, "BFIELD":plusB})
-                plus, plusLabel = plusMelody.perform(label=plusLabels[0])
+                plus = orchestra.blend(desiredParameters = {"TEFF":T, 
+                    "LOGG":G, "BFIELD":plusB}, appendTheBlend=False)
 
                 minusB = numpy.max([B-BfieldStroke, Bmin])
-                minusMelody, minusLabels = orchestra.blend(desiredParameters = {"TEFF":T, 
-                    "LOGG":G, "BFIELD":minusB})
-                minus, minusLabel = minusMelody.perform(label=minusLabels[0])
+                minus = orchestra.blend(desiredParameters = {"TEFF":T, 
+                    "LOGG":G, "BFIELD":minusB}, appendTheBlend=False)
 
-                IM.append(plus-minus)
-                factor.append(plusLabel.parameters["BFIELD"] - minusLabel.parameters["BFIELD"])
+                IMs.append(plus.Spectrum-minus.Spectrum)
+                IMs[-1].bin(newWl=observed.Spectrum.wl)
+                factors.append(plus.parameters["BFIELD"] - minus.parameters["BFIELD"])
 
                 print plusB, minusB
-                ax1.clear()
-                plusLabel.Spectrum.plot(ax=ax1)
-                minusLabel.Spectrum.plot(ax=ax1)
-                ax1.figure.show()
-                raw_input()
                 
-                CMs.append(calculateCM(IM))
+                CMs.append(ControlMatrix(IMs=IMs, factors=factors,
+                           coordinates = {"TEFF":T, "LOGG":G, "BFIELD":B}, observed=orig.Spectrum))
+                print CMs[-1].getCommand(plus.Spectrum)
+                raw_input()
 
                 
 
@@ -237,7 +228,7 @@ ax1 = f1.add_axes([0.1, 0.1, 0.8, 0.8])
 
 config = AstroUtils.parse_config(configFile)
 
-orchestra = Moog960.Score(directory='../MusicMaker/TWHydra_T3*', observed=config["inFile"], suffix='')
+orchestra = Moog960.Score(directory='../MusicMaker/Convolved/Kband_Convolved_T3*', observed=config["inFile"], suffix='')
 
 IMs = computeIMs(orchestra)
 
