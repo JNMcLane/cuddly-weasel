@@ -33,15 +33,17 @@ class ControlMatrix( object ):
         self.IMs = []
         self.factors = factors
         self.ax = ax
+        self.nFiltModes = 4
         self.calcCM()
         self.Gain = Gain
         self.coordinates = coordinates
 
     def calcCM(self):
-        for spec in self.IM_Spectra:
+        for spec, factor in zip(self.IM_Spectra, self.factors):
+            #self.IMs.append(spec.flux_I/factor)
             self.IMs.append(spec.flux_I)
         self.IMs = numpy.array(self.IMs)
-        """
+        #"""
         #lineIMs = self.IM[:-4:,]
         dims = self.IMs.shape
         U,S,V = scipy.linalg.svd(self.IMs)
@@ -68,10 +70,17 @@ class ControlMatrix( object ):
 
         S = newS.copy()
         self.CM = numpy.array(scipy.matrix(V.T.dot(S.T.dot(U.T)),dtype=numpy.float32)).T
-        """
+        #"""
 
-        self.CM = scipy.linalg.pinv(self.IMs).T
+        #self.CM = scipy.linalg.pinv(self.IMs).T
+        #blah = scipy.linalg.pinv(self.IMs).T
+        #if self.ax != None:
+        #    self.ax.clear()
+        #    self.ax.matshow(self.CM)
+        #    self.ax.figure.show()
+        #    self.ax.set_aspect('auto')
 
+        #print asdf
         """
         globalIMs = self.IM[-4:,]
         dims = globalIMs.shape
@@ -95,19 +104,19 @@ class ControlMatrix( object ):
         """
         
 
-    def dot(self, difference):
-        overlap_start = numpy.max([numpy.min(self.observed.wl), numpy.min(difference.wl)])
-        overlap_stop = numpy.min([numpy.max(self.observed.wl), numpy.max(difference.wl)])
-        overlap = scipy.where((self.observed.wl >= overlap_start) & (self.observed.wl <= overlap_stop))
+    def dot(self, observed, difference):
+        overlap_start = numpy.max([numpy.min(observed.wl), numpy.min(difference.wl)])
+        overlap_stop = numpy.min([numpy.max(observed.wl), numpy.max(difference.wl)])
+        overlap = scipy.where((observed.wl >= overlap_start) & (observed.wl <= overlap_stop))
 
-        diff = numpy.zeros(len(self.observed.wl))
+        diff = numpy.zeros(len(observed.wl))
 
         diff[overlap] = difference.flux_I
 
         return self.CM.dot(diff)
 
-    def getCommand(self, synthesized, ax=None):
-        difference = self.observed - synthesized
+    def getCommand(self, observed, synthesized, ax=None):
+        difference = observed - synthesized
 
         if ax!=None:
             ax.clear()
@@ -116,15 +125,32 @@ class ControlMatrix( object ):
             ax.plot(self.observed.wl, self.IM[-2])
             ax.figure.show()
             raw_input()
-        command =  self.Gain*(self.dot(difference))*self.factors
+        command =  self.Gain*(self.dot(observed, difference))*self.factors
         #command[self.factors < 1e-3] = 0.0
         return command
 
-def computeIMs(orchestra):
+def computeCMs(orchestra, ax):
     convolved = orchestra.convolved_labels
 
     mastered = orchestra.master(selectedLabels=convolved, keySignature='CONVOLVED')
-    observed = orchestra.listen()
+    test = orchestra.blend(desiredParameters={"TEFF":3000, "LOGG":3.00, "BFIELD":0.7},
+                           appendTheBlend=False)
+    test.Spectrum.nyquistSample(R=45000.0)
+    test.Spectrum.rv(5.32)
+    zero = orchestra.blend(desiredParameters={"TEFF":3000, "LOGG":3.00, "BFIELD":0.0},
+                           appendTheBlend=False)
+    zero.Spectrum.rv(5.32)
+    one = orchestra.blend(desiredParameters={"TEFF":3000, "LOGG":3.00, "BFIELD":0.1},
+                           appendTheBlend=False)
+    one.Spectrum.rv(5.32)
+    two = orchestra.blend(desiredParameters={"TEFF":3000, "LOGG":3.00, "BFIELD":0.2},
+                           appendTheBlend=False)
+    two.Spectrum.rv(5.32)
+    three = orchestra.blend(desiredParameters={"TEFF":3000, "LOGG":3.00, "BFIELD":0.3},
+                           appendTheBlend=False)
+    three.Spectrum.rv(5.32)
+    orchestra.compositeObservedLabel=test
+    observed = orchestra.compositeObservedLabel
 
     params = parseParams(mastered)
 
@@ -144,18 +170,20 @@ def computeIMs(orchestra):
     Bmin = numpy.min(params["BFIELD"])
     Bmax = numpy.max(params["BFIELD"])
     
-    IMs = []
     CMs = []
 
     for T in params["TEFF"]:
         for G in params["LOGG"]:
             for B in params["BFIELD"]:
+                print("T=%d, G=%.2f B=%.2f" % (T, G, B))
                 IMs = []
                 factors = []
-                plusT = numpy.min([T+TeffStroke, Tmax])
                 orig = orchestra.blend(desiredParameters = {"TEFF":T, "LOGG":G,
                          "BFIELD":B}, appendTheBlend=False)
                 orig.Spectrum.bin(newWl=observed.Spectrum.wl)
+
+                #Change in Teff
+                plusT = numpy.min([T+TeffStroke, Tmax])
                 plus = orchestra.blend(desiredParameters = {"TEFF":plusT, 
                     "LOGG":G, "BFIELD":B}, appendTheBlend=False)
 
@@ -168,8 +196,7 @@ def computeIMs(orchestra):
                 factors.append(plus.parameters["TEFF"] - minus.parameters["TEFF"])
 
            
-                print plusT, minusT
-
+                #Change in Surface Gravity
                 plusG = numpy.min([G+loggStroke, Gmax])
                 plus = orchestra.blend(desiredParameters = {"TEFF":T, 
                     "LOGG":plusG, "BFIELD":B}, appendTheBlend=False)
@@ -182,8 +209,7 @@ def computeIMs(orchestra):
                 IMs[-1].bin(newWl=observed.Spectrum.wl)
                 factors.append(plus.parameters["LOGG"] - minus.parameters["LOGG"])
 
-                print plusG, minusG
-
+                #Change in B-field
                 plusB = numpy.min([B+BfieldStroke, Bmax])
                 plus = orchestra.blend(desiredParameters = {"TEFF":T, 
                     "LOGG":G, "BFIELD":plusB}, appendTheBlend=False)
@@ -196,19 +222,93 @@ def computeIMs(orchestra):
                 IMs[-1].bin(newWl=observed.Spectrum.wl)
                 factors.append(plus.parameters["BFIELD"] - minus.parameters["BFIELD"])
 
-                print plusB, minusB
-                
+                #Radial Velocity shift
+                red = orig.Spectrum * 1.0
+                red.rv(10.0)
+                blue = orig.Spectrum * 1.0
+                blue.rv(-10.0)
+                rv = red - blue
+                IMs.append(rv)
+                IMs[-1].bin(newWl=observed.Spectrum.wl)
+                factors.append(20.0)
+                del(red)
+                del(blue)
+
+                #Continuum Shift
+                continuum_shift = (orig.Spectrum * 1.1) - (orig.Spectrum * 0.9)
+                IMs.append(continuum_shift)
+                factors.append(0.2)
+
+                #Veiling
+
                 CMs.append(ControlMatrix(IMs=IMs, factors=factors,
-                           coordinates = {"TEFF":T, "LOGG":G, "BFIELD":B}, observed=orig.Spectrum))
-                print CMs[-1].getCommand(plus.Spectrum)
-                raw_input()
+                           coordinates = {"TEFF":T, "LOGG":G, "BFIELD":B}))
 
-                
+                params = {"TEFF":3000, "LOGG": 3.0, "BFIELD":0.0}
+                rv = 5.32
+                while True:
+                    ax1.clear()
+                    orchestra.compositeObservedLabel.Spectrum.plot(ax=ax1, color = 'k')
+                    zero.Spectrum.plot(ax=ax1, color = 'b')
+                    guess = orchestra.blend(desiredParameters=params, appendTheBlend=False)
+                    guess.Spectrum.rv(rv)
+                    guess.Spectrum.bin(newWl = orchestra.compositeObservedLabel.Spectrum.wl)
+                    guess.Spectrum.plot(ax=ax1, color = 'm')
+
+                    command = CMs[-1].getCommand(orchestra.compositeObservedLabel.Spectrum, guess.Spectrum)
+                    print params
+                    print command
+                    params["TEFF"] += command[0]
+                    params["TEFF"] = numpy.max([3000.0, params["TEFF"]])
+                    params["LOGG"] += command[1]
+                    params["LOGG"] = numpy.max([3.0, params["LOGG"]])
+                    params["BFIELD"] += command[2]
+                    params["BFIELD"] = numpy.max([0.0, params["BFIELD"]])
+                    rv += command[3]
+                    f1.show()
+                    #print params
+                    raw_input()
+                del(plus)
+                del(minus)
+                del(orig)
+
+    return CMs
 
 
-    print blah
-    return
+def findClosestCM(CMs, params):
+    index = 0
+    for i in range(len(CMs)):
+        for key in params.keys():
+            if (numpy.abs(CMs[i].coordinates[key] - params[key]) < numpy.abs(CMs[index].coordinates[key] - params[key])):
+                index = i
+    return index
 
+def fitParams(orchestra, CMs, ax):
+    params = {"TEFF":3600, "LOGG":4.2, "BFIELD":2.1}
+    rv = 3.5
+    continuum = 1.0
+
+    while True:
+        guess = orchestra.blend(desiredParameters=params, appendTheBlend=False)
+        guess.Spectrum.rv(rv)
+        guess.Spectrum.bin(newWl = orchestra.compositeObservedLabel.Spectrum.wl)
+        
+        i = findClosestCM(CMs, params)
+        print CMs[i].coordinates
+        print params
+        print rv
+        command = CMs[i].getCommand(orchestra.compositeObservedLabel.Spectrum, guess.Spectrum)
+        print command
+        params["TEFF"] += command[0]
+        params["LOGG"] += command[1]
+        params["BFIELD"] += command[2]
+        rv += command[3]
+        ax.clear()
+        guess.Spectrum.plot(ax=ax)
+        orchestra.compositeObservedLabel.Spectrum.plot(ax=ax)
+        ax.figure.show()
+        raw_input()
+        del(guess)
 
 configFile = sys.argv[1]
 calcIM = bool(sys.argv[2]=='True')
@@ -230,8 +330,29 @@ config = AstroUtils.parse_config(configFile)
 
 orchestra = Moog960.Score(directory='../MusicMaker/Convolved/Kband_Convolved_T3*', observed=config["inFile"], suffix='')
 
-IMs = computeIMs(orchestra)
+#mastered = orchestra.master(selectedLabels=orchestra.convolved_labels, keySignature='CONVOLVED')
 
+#one = mastered[0].Spectrum.copy()
+
+#one.plot(ax=ax1)
+#one.nyquistSample(R=45000.0)
+#one.plot(ax=ax1)
+#mastered[0].Spectrum.plot(ax=ax1)
+#f1.show()
+
+#print asdf
+if calcIM:
+    CMs = computeCMs(orchestra, ax1)
+
+    #HDU = pyfits.PrimaryHDU(CMs)
+    #HDU.writeto("ControlMatrices.fits")
+    #pickle.dump(CMs, "ControlMatrices.dat")
+else:
+    CMs = pickle.load("ControlMatrices.dat")
+
+fit = fitParams(orchestra, CMs, ax1)
+
+print asdf
 twhya = observed[0][0]
 twhya.wl += wlOffset
 twhya.flux_I += continuum
