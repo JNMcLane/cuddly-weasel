@@ -38,8 +38,8 @@ def lnprob(theta): #The probability of accepting the new point.
     return lp + lnlike(theta)
 
 
-#Score = Moog960.Score(directory='/home/cdeen/Code/Python/cuddly-weasel/MusicMaker/Convolved/', suffix='')
-Score = Moog960.Score(directory='/data/cdeen/Data/MoogPy/Convolved/', suffix='')
+Score = Moog960.Score(directory='/home/cdeen/Code/Python/cuddly-weasel/MusicMaker/Convolved/', suffix='')
+#Score = Moog960.Score(directory='/data/cdeen/Data/MoogPy/Convolved/', suffix='')
 mastered = Score.master()
 
 T_low = 3000.0
@@ -64,6 +64,7 @@ for t, g, b, v in zip(temps, gravs, bs, vs):
     desiredParams["TEFF"] = t
     desiredParams["LOGG"] = g
     desiredParams["BFIELD"] = b
+    print desiredParams
     
     compositeObservedLabel = Score.blend(desiredParameters=desiredParams, appendTheBlend=False)
     compositeObservedLabel.Spectrum.rv(v)
@@ -74,7 +75,7 @@ for t, g, b, v in zip(temps, gravs, bs, vs):
     #compositeObservedLabel = Score.listen()
 
     #MCMC parameters
-    nwalkers = 50       #number of walkers used in fitting
+    nwalkers = 100       #number of walkers used in fitting
     ndim = 4             #number of parameters being fit
 
 
