@@ -24,5 +24,6 @@ labels = Score.getLabels(keySignature='CONVOLVED')
 
 num = 0
 for label in labels:
+    print asdf
     label.Spectrum.savePlainFits(outfileName=outdir+label.Spectrum.filename.split('/')[-1])
     num += 1

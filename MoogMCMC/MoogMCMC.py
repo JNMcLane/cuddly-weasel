@@ -15,6 +15,9 @@ import corner
 import time
 import matplotlib.pyplot as pyplot
 
+wlStart = 22000.0
+wlStop = 22100.0
+
 fig = pyplot.figure(0)
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
@@ -42,10 +45,10 @@ Score = Moog960.Score(directory='../MusicMaker/Convolved/', suffix='', observed=
 mastered = Score.master()
 
 #combine observed phrases into a master phrase
-compositeObservedLabel = Score.listen()
+compositeObservedLabel = Score.listen(wlRange=[wlStart, wlStop])
 
 #MCMC parameters
-nwalkers = 100 	#number of walkers used in fitting
+nwalkers = 50 	#number of walkers used in fitting
 ndim = 4 		#number of parameters being fit
 
 
@@ -56,18 +59,26 @@ psize = pos_max - pos_min
 pos = [pos_min + psize*np.random.rand(ndim) for i in range(nwalkers)]
 
 #Setup ensamble sampler from emcee
-sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=())
+sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(), threads=6)
 
 #Preform and time burn-in phase
 time0 = time.time()
-pos, prob, state  = sampler.run_mcmc(pos, 100)
-sampler.reset()
+pos, prob, state  = sampler.run_mcmc(pos, 300)
 time1=time.time()
 print 'Burn-in time was '+str(time1-time0)+' seconds.'
 
+chi = sampler.lnprobability
+for i in chi:
+    ax.plot(i)
+
+fig.show()
+raw_input()
+
+sampler.reset()
+
 #Perform MCMC fit
 time0 = time.time()
-pos, prob, state  = sampler.run_mcmc(pos, 1000)
+pos, prob, state  = sampler.run_mcmc(pos, 100)
 time1=time.time()
 print 'Fitting time was '+str(time1-time0)+' seconds.'
 
