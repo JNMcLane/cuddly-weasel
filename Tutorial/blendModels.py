@@ -1,4 +1,4 @@
-import Moog960
+import Moog690
 import AstroUtils
 import sys
 import numpy
@@ -9,12 +9,9 @@ convovled with the previous program, this program reads in the grid of convolved
 models and interpolates to give a synthetic spectrum corresponding to the desired
 parameters (Teff, log g, and Bfield).  The blended spectrum is then saved in a
 .fits file for further processing
-
 1) Edit the configuration parameters in blendModels.cfg to reflect your desired
 blends
-
 2) run blendModels.py blendModels.cfg
-
 """
 
 config = AstroUtils.parse_config(sys.argv[1])
@@ -38,7 +35,7 @@ except:
 blendedOutput = config["output_dir"]
 blendedBase = config["output_base"]
 
-Score = Moog960.Score(directory=config["convolved_dir"], suffix='', observed='../Theremin/TWHydra.fits')
+Score = Moog690.Score(directory=config["convolved_dir"], suffix='', observed='../Theremin/TWHydra.fits')
 
 blah = Score.listen()
 
@@ -59,11 +56,10 @@ for T in desiredTeff:
             desiredParams["TEFF"] = T
             desiredParams["LOGG"] = G
             desiredParams["BFIELD"] = B
-            blendedLabel = Score.blend(desiredParameters=desiredParams)
+            blendedMelody, blendedLabels = Score.blend(desiredParameters=desiredParams)
 
             filename = blendedOutput+blendedBase+'_T%d_G%.2f_B%.2f.fits' % (T, G, B)
             # Save fits files for further processing  - Very messy!  I know!!!
             #blendedLabels[0].Spectrum.bin(Score.compositeObservedLabel.Spectrum.wl)
-            blendedLabel.Phrase.saveConvolved(label=blendedLabel, 
-                      filename=filename, header=blendedLabel.Melody.header)
-
+            blendedLabels[0].Phrase.saveConvolved(label=blendedLabels[0], 
+                      filename=filename)

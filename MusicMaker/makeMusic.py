@@ -9,8 +9,8 @@ fig = pyplot.figure(0)
 fig.clear()
 ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
 
-vsini = 30.0
-R = 45000.0
+vsini = 10.0
+R = 1000.0
 
 datadir = '/Users/JNMcLane/data/CorrectedRawData/'
 
